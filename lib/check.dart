@@ -106,7 +106,7 @@ class HeadChecker extends BufferCheck {
   @override
   Widget? getWidget({required String source, required int index}) {
     String head = int.parse(source, radix: 16).toRadixString(2);
-    String type = head.startsWith("1") ? "命令帧" : "应答帧";
+    String type = head.startsWith("0") ? "命令帧" : "应答帧";
     String isEncrypt = head.startsWith("1", 1) ? "已加密" : "未加密";
     widget = Row(
       children: [
@@ -124,12 +124,13 @@ class HeadChecker extends BufferCheck {
   }
 }
 
+//section 命令
 class CmdChecker extends BufferCheck {
   @override
   Widget? getWidget({required String source, required int index}) {
     int cmd = int.parse(source, radix: 16);
-    List<String> arrTitle = ["", "-配置帧加密", "读取蓝牙卡信息", "写入蓝牙卡信息", "读取用户信息", "写入用户信息", "读取IC卡数据", "写入IC卡数据", "擦除IC卡数据", "获取IC卡密码错误计数器", "获取IC卡密码", "验证IC卡密码", "修改IC卡密码", "获取当前MTU"];
-    List<String> arrDescription = [
+    List<String> arrTitle = ["", "配置帧加密", "读取蓝牙卡信息", "写入蓝牙卡信息", "读取用户信息", "写入用户信息", "读取IC卡数据", "写入IC卡数据", "擦除IC卡数据", "获取IC卡密码错误计数器", "获取IC卡密码", "验证IC卡密码", "修改IC卡密码", "获取当前MTU"];
+    List<String> arrDescription = ["",
       """
           命令帧 DATA[0]：
                   0x59 - 允许回应非加密帧
@@ -338,6 +339,7 @@ class ErrorChecker extends BufferCheck {
           "错误码说明:",
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
+        //section arr error
         Expanded(
           child: Text(arr[error], style: const TextStyle(fontSize: 16)),
           flex: 1,
@@ -412,6 +414,7 @@ class EndChecker extends BufferCheck {
       children: [
         const Text(
           "结束位:",
+          //section arr dsds
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         Expanded(
