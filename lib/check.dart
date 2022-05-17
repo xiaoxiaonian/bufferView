@@ -124,7 +124,6 @@ class HeadChecker extends BufferCheck {
   }
 }
 
-//section 命令
 class CmdChecker extends BufferCheck {
   @override
   Widget? getWidget({required String source, required int index}) {
@@ -339,7 +338,6 @@ class ErrorChecker extends BufferCheck {
           "错误码说明:",
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
-        //section arr error
         Expanded(
           child: Text(arr[error], style: const TextStyle(fontSize: 16)),
           flex: 1,
@@ -414,7 +412,6 @@ class EndChecker extends BufferCheck {
       children: [
         const Text(
           "结束位:",
-          //section arr dsds
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         Expanded(

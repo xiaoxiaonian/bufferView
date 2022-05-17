@@ -39,6 +39,12 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   int dataLength = 0;
   String? buffer;
+  String printResult = "";
+
+  // region  ---- 字节是加密的吗 ----
+  bool encrypted = false;
+
+  // endregion
 
   // String buffer = "0F0FA50006A200000864330AFFFF000000ED03FFFFFF3F8AAA00FE00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000058ED010203040506FFFFFFFFFFFF3289EF41571C3F8A1FFE01E100000864FFFF0A0000000000000000000100000005000102612CED032359A37C44279EA5475589CABBFE164ACFAE01020304050600000000001C442937CA";
   // String? buffer = "001900aac055d1532e3503bae90a0305000100004000f3755e06e516";
@@ -79,6 +85,14 @@ class _MyHomePageState extends State<MyHomePage> {
       for (var element in arrRegExp) {
         source = element["RegExp"].stringMatch(buffer);
         debugPrint("$source");
+        // region  ---- 判断字节是否加密的 ----
+        if ((element["RegExp"] as RegExp).pattern == r"(?<=^\w{8})\w{2}") {
+          String head = int.parse(source!, radix: 16).toRadixString(2);
+          encrypted = head.startsWith("1", 1) ? true : false;
+          debugPrint("$encrypted");
+          setState(() {});
+        }
+        // endregion
         if ((element["RegExp"] as RegExp).pattern == r"(?<=^\w{28})\w{2}") {
           putBuffer(value: source ?? "", type: source == "00" ? 6 : 7);
         } else {
@@ -94,10 +108,22 @@ class _MyHomePageState extends State<MyHomePage> {
           putBuffer(value: source ?? "", type: element["type"]);
         }
       }
+      setState(() {
+        printResult = "";
+      });
     } else {
+      setState(() {
+        printResult = "不匹配";
+        Future.delayed(Duration(microseconds: 1500),(){
+          debugPrint("clear");
+          /*setState(() {
+            printResult = "1";
+          });*/
+        });
+      });
       debugPrint("no match");
     }
-    setState(() {});
+
   }
 
   void putBuffer({required String value, required int type}) {
@@ -167,77 +193,129 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {});
   }
 
+  // region  ---- 解密 ----
+  void decrypt() {
+    String? frame = buffer?.substring(6, buffer?.length);
+    String? source = frame?.substring(20, frame.length - 2);
+    String result = "";
+    for (int index = 0; index < source!.length; index = index + 2) {
+      String ch = source.substring(index, index + 2);
+      var o = (int.parse(ch, radix: 16) ^ 0x59).toRadixString(16);
+      // debugPrint(o);
+      result += (o.length == 1 ? '0' : '') + o;
+    }
+    debugPrint("16进制字符串$result");
+    String head = int.parse(buffer!.substring(8, 10), radix: 16).toRadixString(2);
+    head = head.replaceRange(1, 2, "0");
+    String headReplaced = int.parse(head, radix: 2).toRadixString(16);
+    buffer = buffer!.replaceRange(8, 10, headReplaced);
+    buffer = buffer!.replaceRange(26, 26 + source.length, result);
+    debugPrint("$buffer");
+    updateContent();
+    setState(() {});
+  }
+
+  // endregion
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
+        padding: const EdgeInsets.only(top: 20),
         alignment: Alignment.topLeft,
         color: Colors.white,
         width: MediaQuery.of(context).size.width,
         height: MediaQuery.of(context).size.height,
-        child: Column(
+        child: Stack(
           children: [
-            Row(
+            Column(
               children: [
-                const Spacer(),
-                Padding(
-                  padding: const EdgeInsets.only(top: 30, right: 50),
-                  child: ElevatedButton(
-                      onPressed: () {
-                        Clipboard.getData(Clipboard.kTextPlain).then((value) {
-                          debugPrint("粘贴的数据->${value?.text}");
-                          buffer = value?.text;
-                          if (buffer == null) {
-                            debugPrint("空数据");
-                          } else {
-                            if (buffer!.isNotEmpty) {
-                              updateContent();
-                            }
-                          }
-                        });
-                      },
-                      child: Icon(list.isEmpty ? Icons.add : Icons.refresh_outlined)),
-                )
-              ],
-            ),
-            const SizedBox(height: 20),
-            Expanded(
-                child: SingleChildScrollView(
-                    child: Column(
-              children: [
-                Wrap(
-                  children: list
-                      .asMap()
-                      .keys
-                      .map((e) => FractionallySizedBox(
-                            alignment: Alignment.center,
-                            widthFactor: 0.06,
-                            child: GestureDetector(
-                                onTap: () {
-                                  onBufferTap(index: e);
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 5),
-                                  alignment: Alignment.center,
-                                  color: list[e].color,
-                                  width: MediaQuery.of(context).size.width,
-                                  child: Text(
-                                    list[e].name ?? "",
-                                  ),
-                                )),
-                          ))
-                      .toList(),
+                Row(
+                  children: [
+                    const Spacer(),
+                    Visibility(
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 10),
+                        child: ElevatedButton(
+                            onPressed: () {
+                              decrypt();
+                            },
+                            child: const Text("解密")),
+                      ),
+                      visible: encrypted,
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 50),
+                      child: ElevatedButton(
+                          onPressed: () {
+                            Clipboard.getData(Clipboard.kTextPlain).then((value) {
+                              debugPrint("粘贴的数据->${value?.text}");
+                              buffer = value?.text;
+                              if (buffer == null) {
+                                debugPrint("空数据");
+                                setState(() {
+                                  printResult = "空数据";
+                                  /*Future.delayed(Duration(microseconds: 500),(){
+                                    setState(() {
+                                      printResult = "1";
+                                    });
+                                  });*/
+                                });
+                              } else {
+                                if (buffer!.isNotEmpty) {
+                                  updateContent();
+                                }
+                              }
+                            });
+                          },
+                          child: Icon(list.isEmpty ? Icons.add : Icons.refresh_outlined)),
+                    )
+                  ],
                 ),
                 const SizedBox(height: 20),
-                Padding(
-                  padding: const EdgeInsets.only(left: 25),
-                  child: extentWidget ??
-                      Container(
-                        child: null,
-                      ),
-                )
+                Expanded(
+                    child: SingleChildScrollView(
+                        child: Column(
+                  children: [
+                    Wrap(
+                      children: list
+                          .asMap()
+                          .keys
+                          .map((e) => FractionallySizedBox(
+                                alignment: Alignment.center,
+                                widthFactor: 0.06,
+                                child: GestureDetector(
+                                    onTap: () {
+                                      onBufferTap(index: e);
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(vertical: 5),
+                                      alignment: Alignment.center,
+                                      color: list[e].color,
+                                      width: MediaQuery.of(context).size.width,
+                                      child: Text(
+                                        list[e].name ?? "",
+                                      ),
+                                    )),
+                              ))
+                          .toList(),
+                    ),
+                    const SizedBox(height: 20),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 25),
+                      child: extentWidget ??
+                          Container(
+                            child: null,
+                          ),
+                    )
+                  ],
+                )))
               ],
-            )))
+            ),
+            Align(
+              child: Text(printResult),
+              alignment: Alignment.topCenter,
+            )
           ],
         ),
       ),
